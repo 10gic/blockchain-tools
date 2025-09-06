@@ -514,7 +514,10 @@
                             <textarea id="inputText" class="converter-textarea" placeholder="Enter text to convert..." oninput="convertEncoding()"></textarea>
                         </div>
                         <div class="converter-input-group">
-                            <label for="outputText">Output:</label>
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
+                                <label for="outputText">Output:</label>
+                                <div style="color: #666; font-size: 0.9em;"></div>
+                            </div>
                             <textarea id="outputText" class="converter-textarea" placeholder="Converted result will appear here..." readonly></textarea>
                         </div>
                     </div>
