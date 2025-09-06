@@ -485,10 +485,10 @@
                     <div class="converter-controls">
                         <label for="fromFormat">From:</label>
                         <select id="fromFormat" class="converter-select" onchange="convertEncoding()">
+                            <option value="auto">Auto</option>
                             <option value="hex">Hex</option>
                             <option value="base58">Base58 (no checksum)</option>
                             <option value="base64">Base64</option>
-                            <option value="base64url">Base64 URL safe</option>
                             <option value="uint8array">Uint8 array</option>
                             <option value="utf8">UTF-8</option>
                         </select>
@@ -496,9 +496,9 @@
                         <label for="toFormat">To:</label>
                         <select id="toFormat" class="converter-select" onchange="convertEncoding()">
                             <option value="base64">Base64</option>
+                            <option value="base64url">Base64 URL safe</option>
                             <option value="hex">Hex</option>
                             <option value="base58">Base58 (no checksum)</option>
-                            <option value="base64url">Base64 URL safe</option>
                             <option value="uint8array">Uint8 array</option>
                             <option value="utf8">UTF-8</option>
                         </select>
@@ -507,7 +507,10 @@
                     
                     <div class="converter-grid">
                         <div class="converter-input-group">
-                            <label for="inputText">Input:</label>
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
+                                <label for="inputText">Input:</label>
+                                <div id="detected-encoding" style="color: #666; font-size: 0.9em;"></div>
+                            </div>
                             <textarea id="inputText" class="converter-textarea" placeholder="Enter text to convert..." oninput="convertEncoding()"></textarea>
                         </div>
                         <div class="converter-input-group">
@@ -523,7 +526,7 @@
     </div>
 
     <script type="module">
-        import init, { uni_tx_decode, dump_private_key, dump_public_key, encoding_convert, dump_mnemonics, generate_random_mnemonics, generate_random_private_key } from './pkg/blockchain_tools.js';
+        import init, { uni_tx_decode, dump_private_key, dump_public_key, encoding_convert, detect_encoding, dump_mnemonics, generate_random_mnemonics, generate_random_private_key } from './pkg/blockchain_tools.js';
 
         let wasmModule = null;
 
@@ -994,6 +997,26 @@
             document.getElementById('txInput').value = testTransaction;
         };
 
+        // Encoding detection function using Rust implementation
+        function detectEncoding(input) {
+            if (!wasmModule) {
+                return 'UTF-8'; // Fallback if WASM not initialized
+            }
+
+            try {
+                const result = detect_encoding(input);
+                const jsonResult = JSON.parse(result);
+                
+                if (jsonResult.error) {
+                    return 'UTF-8'; // Fallback on error
+                }
+                
+                return jsonResult.result;
+            } catch (error) {
+                return 'UTF-8'; // Fallback on error
+            }
+        }
+
         // Encoding conversion functions
         window.convertEncoding = function() {
             if (!wasmModule) {
@@ -1003,15 +1026,35 @@
             }
 
             const input = document.getElementById('inputText').value.trim();
-            const fromFormat = document.getElementById('fromFormat').value;
+            let fromFormat = document.getElementById('fromFormat').value;
             const toFormat = document.getElementById('toFormat').value;
             const output = document.getElementById('outputText');
             const message = document.getElementById('converterMessage');
+            const detectedEncodingDiv = document.getElementById('detected-encoding');
 
             if (!input) {
                 output.value = '';
                 message.innerHTML = '';
+                detectedEncodingDiv.textContent = '';
                 return;
+            }
+
+            // Handle auto detection
+            if (fromFormat === 'auto') {
+                const detectedType = detectEncoding(input);
+                detectedEncodingDiv.textContent = `(Detected: ${detectedType})`;
+                
+                // Map detected type to format value
+                const formatMap = {
+                    'Hex': 'hex',
+                    'Base64': 'base64',
+                    'Base58': 'base58',
+                    'Uint8 array': 'uint8array',
+                    'UTF-8': 'utf8'
+                };
+                fromFormat = formatMap[detectedType] || 'utf8';
+            } else {
+                detectedEncodingDiv.textContent = '';
             }
 
             try {
@@ -1035,6 +1078,7 @@
             document.getElementById('inputText').value = '';
             document.getElementById('outputText').value = '';
             document.getElementById('converterMessage').innerHTML = '';
+            document.getElementById('detected-encoding').textContent = '';
         };
 
         // Chain information and helper functions
